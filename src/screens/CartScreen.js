@@ -1,5 +1,13 @@
 import React, { useContext } from 'react';
-import { View, Text, FlatList, Image, Button, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  Button,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
 import { CartContext } from '../context/CartContext';
 
 const CartScreen = () => {
@@ -11,11 +19,17 @@ const CartScreen = () => {
 
   const renderItem = ({ item }) => (
     <View style={styles.item}>
-      <Image source={item.image} style={styles.image} />
+      <Image
+        source={{ uri: item.image }} // ✅ Fix for remote image URLs
+        style={styles.image}
+      />
       <View style={styles.details}>
         <Text style={styles.name}>{item.name}</Text>
         <Text style={styles.price}>₹{item.price}</Text>
-        <Button title="Remove" onPress={() => removeFromCart(item.id)} />
+        <Button
+          title="Remove"
+          onPress={() => removeFromCart(item.id)} // ✅ Assumes item.id is defined
+        />
       </View>
     </View>
   );
@@ -32,7 +46,7 @@ const CartScreen = () => {
         <>
           <FlatList
             data={cartItems}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.id.toString()} // ✅ Fix if id is a number
             renderItem={renderItem}
             contentContainerStyle={{ paddingBottom: 100 }}
           />
@@ -59,12 +73,17 @@ const styles = StyleSheet.create({
     elevation: 2,
     padding: 10,
   },
-  image: { width: 100, height: 100, resizeMode: 'contain', borderRadius: 10 },
+  image: {
+    width: 100,
+    height: 100,
+    resizeMode: 'contain',
+    borderRadius: 10,
+    backgroundColor: '#eee',
+  },
   details: { flex: 1, paddingLeft: 10, justifyContent: 'space-between' },
   name: { fontSize: 16, fontWeight: 'bold' },
   price: { fontSize: 14, color: 'green', marginVertical: 5 },
   emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16 },
-
   footer: {
     position: 'absolute',
     bottom: 0,
