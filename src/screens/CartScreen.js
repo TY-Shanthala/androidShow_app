@@ -20,7 +20,7 @@ const CartScreen = () => {
   const renderItem = ({ item }) => (
     <View style={styles.item}>
       <Image
-        source={{ uri: item.image }} // ✅ Fix for remote image URLs
+        source={{ uri: item.thumbnail }}
         style={styles.image}
       />
       <View style={styles.details}>
@@ -28,7 +28,7 @@ const CartScreen = () => {
         <Text style={styles.price}>₹{item.price}</Text>
         <Button
           title="Remove"
-          onPress={() => removeFromCart(item.id)} // ✅ Assumes item.id is defined
+          onPress={() => removeFromCart(item.id)} 
         />
       </View>
     </View>

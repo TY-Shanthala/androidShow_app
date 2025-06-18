@@ -1,129 +1,183 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
-  FlatList,
   Text,
+  FlatList,
   Image,
   StyleSheet,
+  Dimensions,
   Pressable,
   ActivityIndicator,
 } from 'react-native';
 import { CartContext } from '../context/CartContext';
 
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 36) / 2;
+
 const HomeScreen = ({ navigation }) => {
   const { addToCart } = useContext(CartContext);
   const [products, setProducts] = useState([]);
-  const [page, setPage] = useState(1); // Start with cart ID = 1
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true); // Stop if no more carts
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  const fetchProducts = async () => {
+  const fetchCarts = async () => {
     if (loading || !hasMore) return;
 
     setLoading(true);
     try {
-      const response = await fetch(`https://dummyjson.com/carts/${page}`);
-      if (!response.ok) throw new Error('No more data');
+      const res = await fetch(`https://dummyjson.com/carts/${page}`);
+      const data = await res.json();
 
-      const data = await response.json();
-      if (!data?.products?.length) {
+      // dummyjson returns a single cart object at that endpoint
+      if (data && data.products && data.products.length > 0) {
+        setProducts((prev) => [...prev, ...data.products]);
+        setPage((prev) => prev + 1);
+      } else {
         setHasMore(false);
-        return;
       }
-
-      const mapped = data.products.map((item) => ({
-        id: `${item.id}-${page}`,
-        name: item.title,
-        price: item.price * item.quantity,
-        image: item.thumbnail,
-        quantity: item.quantity,
-        description: item.description || 'No description',
-      }));
-
-      setProducts((prev) => [...prev, ...mapped]);
-      setPage((prev) => prev + 1);
     } catch (err) {
-      console.warn('Fetch error:', err.message);
-      setHasMore(false);
+      console.warn('Failed to fetch:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchCarts();
   }, []);
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
-      <Image source={{ uri: item.image }} style={styles.image} />
-      <Text style={styles.title}>{item.name}</Text>
-      <Text style={styles.price}>₹{item.price}</Text>
+      <Image source={{ uri: item.thumbnail || 'https://via.placeholder.com/150' }} style={styles.image} />
+      <Text numberOfLines={2} style={styles.title}>{item.title}</Text>
+      <Text style={styles.brand}>{item.brand}</Text>
+      <Text style={styles.price}>
+        ₹{item.price}{' '}
+        <Text style={styles.discount}>({item.discountPercentage}% OFF)</Text>
+      </Text>
+      {/* <Text style={styles.stock}>Stock: {item?.stock}</Text>
+      <Text style={styles.rating}>⭐ {item.rating}</Text> */}
 
-      <Pressable
-        style={styles.detailsButton}
-        onPress={() => navigation.navigate('ProductDetails', { product: item })}
-      >
-        <Text style={styles.buttonText}>More details</Text>
-      </Pressable>
+      <View style={styles.buttonRow}>
+        <Pressable
+          style={styles.detailButton}
+          onPress={() => navigation.navigate('ProductDetails', { product: item })}
+        >
+          <Text style={styles.buttonText}>Details</Text>
+        </Pressable>
+        <Pressable
+  style={styles.cartButton}
+  onPress={() => {
+    addToCart(item);
+    navigation.navigate('Cart');
+  }}
+>
+  <Text style={styles.buttonText}>Add</Text>
+</Pressable>
 
-      <Pressable
-        style={styles.cartButton}
-        onPress={() => {
-          addToCart(item);
-          navigation.navigate('Cart');
-        }}
-      >
-        <Text style={styles.buttonText}>Add To Cart</Text>
-      </Pressable>
+      </View>
     </View>
   );
+
+  const renderFooter = () =>
+    loading ? <ActivityIndicator style={{ marginVertical: 16 }} size="large" color="blue" /> : null;
 
   return (
     <FlatList
       data={products}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item, index) => `${item.id}-${index}`}
       renderItem={renderItem}
+      numColumns={2}
       contentContainerStyle={styles.container}
-      onEndReached={fetchProducts}
+      columnWrapperStyle={styles.row}
+      onEndReached={fetchCarts}
       onEndReachedThreshold={0.5}
-      ListFooterComponent={
-        loading ? (
-          <View style={styles.loader}>
-            <ActivityIndicator size="large" color="blue" />
-          </View>
-        ) : null
-      }
+      ListFooterComponent={renderFooter}
     />
   );
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 10 },
-  card: {
-    marginBottom: 20,
-    padding: 15,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    elevation: 3,
+  container: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
   },
-  image: { width: '100%', height: 200, resizeMode: 'contain' },
-  title: { fontSize: 18, fontWeight: 'bold', marginTop: 10 },
-  price: { fontSize: 16, color: 'green', marginTop: 5 },
-  detailsButton: {
-    paddingVertical: 8,
-    backgroundColor: 'blue',
+  row: {
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  card: {
+    backgroundColor: '#fff',
+    width: CARD_WIDTH,
+    borderRadius: 10,
+    padding: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  image: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    resizeMode: 'cover',
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+    color: '#333',
+  },
+  brand: {
+    fontSize: 12,
+    color: '#777',
+    marginTop: 2,
+  },
+  price: {
+    marginTop: 6,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#228B22',
+  },
+  discount: {
+    fontSize: 12,
+    color: '#d9534f',
+  },
+  stock: {
+    fontSize: 12,
+    color: '#555',
+    marginTop: 4,
+  },
+  rating: {
+    fontSize: 13,
+    marginTop: 4,
+    color: '#f1c40f',
+  },
+  buttonRow: {
+    flexDirection: 'row',
     marginTop: 10,
-    borderRadius: 4,
+  },
+  detailButton: {
+    flex: 1,
+    marginRight: 5,
+    backgroundColor: '#3498db',
+    paddingVertical: 6,
+    borderRadius: 5,
   },
   cartButton: {
-    paddingVertical: 8,
-    backgroundColor: 'green',
-    marginTop: 10,
-    borderRadius: 4,
+    flex: 1,
+    marginLeft: 5,
+    backgroundColor: '#2ecc71',
+    paddingVertical: 6,
+    borderRadius: 5,
   },
-  buttonText: { color: 'white', textAlign: 'center' },
-  loader: { paddingVertical: 20 },
+  buttonText: {
+    textAlign: 'center',
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
 });
 
 export default HomeScreen;
